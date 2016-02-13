@@ -64,12 +64,13 @@ def markwoitz_portfolio(rate_rets, cov_mat, exp_rets, target_ret = 0.0006, allow
     # constraints Gx <= h
     if not allow_short:
         # exp_rets * x >= 1 and x >= 0
-        G = opt.matrix(np.vstack((-exp_rets.values, -np.identity(n))))
-        h = opt.matrix(np.vstack((-target_ret, +np.zeros((n, 1)))))
+        G = opt.matrix(np.vstack((-exp_rets.values, -np.identity(n), np.identity(n))))
+        h = opt.matrix(np.vstack((-target_ret, -lmin+np.zeros((n, 1)), lmax + np.zeros((n, 1)))))
     else :
         # exp_rets * x >= 1
         G = opt.matrix(-exp_rets.values).T
         h = opt.matrix(-target_ret)
+
     A = opt.matrix(1.0, (1, n))
     x = opt.matrix(1.0, (n, 1))
     b = opt.matrix(1.0)
@@ -85,35 +86,39 @@ def markwoitz_portfolio(rate_rets, cov_mat, exp_rets, target_ret = 0.0006, allow
     ret = (opt.matrix(weights).T * opt.matrix(exp_rets))[0, 0]
     risk = np.sqrt(np.asmatrix(weights) * cov_mat * np.asmatrix(weights).T)
     
-    return weights, ret, risk, cov_mat, exp_rets
+    return weights, ret, risk
 
-def main() :
+def main(short = False) :
     # loading data
     df = load_data("prices.csv")
-    d = df.head(2518)
-    d = d[['AA', 'AXP', 'CAT', 'DD']]
+    #d = df.head(2)
+    #d = d[['AA', 'AXP', 'CAT', 'DD']]
 
     # compute covariance matrix, rates of returns and expected returns
-    rateret = rates_return(d)
+    rateret = rates_return(df)
     covmat = cov_matrix(rateret)
     exprets = exp_returns(rateret)
 
-    k, x, y, sd, me = markwoitz_portfolio(rateret, covmat, exprets, allow_short = False)
-
+    k, x, y = markwoitz_portfolio(rateret, covmat, exprets, allow_short = False)
+    print k
     y = np.asarray(y)
     lx = []
     ly = []
 
+    '''
+        range of target returns
+    '''
     space = np.arange(.0001, .0008, .000001)
 
     for r in space :
-        k, x, y, t1, t2 = markwoitz_portfolio(rateret, covmat, exprets, target_ret = r, allow_short = True)
-        lx.append(x*10000)
-        ly.append(y*100)
+        k, x, y = markwoitz_portfolio(rateret, covmat, exprets, target_ret = r, allow_short = False)
+        lx.append(x)
+        ly.append(y)
 
-    #print len(ly)
-    z = zip(lx, ly)
+    #z = zip(lx, ly)
 
+    plt.xlim([.007, .014])
+    plt.ylim([0, .001])
     plt.scatter(ly, lx, marker = 'o', c = 'c')
     plt.xlabel('std')
     plt.ylabel('mean')
