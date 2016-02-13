@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import cvxopt as opt
 import cvxopt.solvers as optsolvers
+from cvxopt import blas
 import matplotlib.pyplot as plt
 from math import sqrt
 #from ggplot import *
@@ -21,7 +22,7 @@ def load_data(fileName):
     return df
 
 def rates_return(prices) :
-    #prices = prices.as_matrix()
+    prices = prices.as_matrix()
     dim = prices.shape
     nb_rows, nb_cols = dim[0], dim[1] 
     rate_ret = np.zeros((nb_rows - 1, nb_cols))
@@ -31,17 +32,26 @@ def rates_return(prices) :
             rate_ret[i, j] = (prices[i+1, j] - prices[i, j]) / prices[i, j]
     return rate_ret
 
-def markwoitz_portfolio(prices, target_ret = 0.0006, allow_short = True) :
-    prices = prices.as_matrix()
+def cov_matrix(rates) :
+    cov_mat = np.cov(rates.T)
+    return cov_mat
+
+def exp_returns(rates) :
+    exp_rets = pd.Series(np.mean(rates, axis = 0))
+    return exp_rets
+
+#def markwoitz_portfolio(prices, target_ret = 0.0006, allow_short = True) :
+def markwoitz_portfolio(rate_rets, cov_mat, exp_rets, target_ret = 0.0006, allow_short = True, lmin = 0, lmax = 1) :
+    #prices = prices.as_matrix()
 
     # rates of returns
-    rate_rets = rates_return(prices)
+    #rate_rets = rates_return(prices)
     
     # covariance matrix
-    cov_mat = np.cov(rate_rets.T)
+    #cov_mat = np.cov(rate_rets.T)
     
     # expected returns with arithmetic mean
-    exp_rets = pd.Series(np.mean(rate_rets, axis = 0))
+    #exp_rets = pd.Series(np.mean(rate_rets, axis = 0))
     
     # matrices conversion : P = covariance
     n = len(cov_mat)
@@ -72,30 +82,39 @@ def markwoitz_portfolio(prices, target_ret = 0.0006, allow_short = True) :
     weights = pd.Series(sol['x'])
     ret = (opt.matrix(weights).T * opt.matrix(exp_rets))[0, 0]
     risk = np.sqrt(np.asmatrix(weights) * cov_mat * np.asmatrix(weights).T)
-    #return weights, ret, risk, cov_mat, exp_rets
-    return cov_mat, exp_rets
+    #risk = [np.sqrt(blas.dot(np.asmatrix(x).T, cov_mat*np.asmatrix(x))) for x in weights]
+    #print "here type"
+    #print type(risk)
+    return weights, ret, risk, cov_mat, exp_rets
+    #return cov_mat, exp_rets
 
 df = load_data("prices.csv")
 d = df.head(2518)
 d = d[['AA', 'AXP', 'CAT', 'DD']]
 
-#k, x, y, sd, me = markwoitz_portfolio(d, allow_short = False)
-sd, me = markwoitz_portfolio(d, allow_short = False)
-"""section("weights")
-print k
-print k.sum()
+rateret = rates_return(d)
+covmat = cov_matrix(rateret)
+exprets = exp_returns(rateret)
+
+
+k, x, y, sd, me = markwoitz_portfolio(rateret, covmat, exprets, allow_short = False)
+#sd, me = markwoitz_portfolio(d, allow_short = False)
+#section("weights")
+#print k
+#print k.sum()
+y = np.asarray(y)
 lx = []
 ly = []
 
 space = np.arange(.0001, .0008, .000001)
 #print len(space)
-N = 10
+#N = 10
 for r in space :
-    k, x, y = markwoitz_portfolio(d, target_ret = r, allow_short = True)
+    k, x, y, t1, t2 = markwoitz_portfolio(rateret, covmat, exprets, target_ret = r, allow_short = True)
     lx.append(x*10000)
     ly.append(y*100)
 
-print len(ly)
+#print len(ly)
 z = zip(lx, ly)
 #for j in range(0, 10) :#
 	#print z[j]
@@ -105,12 +124,12 @@ z = zip(lx, ly)
 #pl = ggplot(aes(x = 'x', y = 'y'), data = donnees) + geom_point() + ggtitle('risk ~ return') + xlab("risk") + ylab("return")
 
 #print pl
-plt.scatter(lx, ly, marker = 'o')
+plt.scatter(ly, lx, marker = 'o')
 plt.xlabel('std')
 plt.ylabel('mean')
-plt.show()"""
+plt.show()
 
-n_assets = 4
+"""n_assets = 4
 n_obs = 1000
 return_vec = np.random.randn(n_assets, n_obs)
 
@@ -125,10 +144,10 @@ def random_portfolio(returns, me, sd):
     '''
 
     #p = np.asmatrix(np.mean(returns, axis=1))
-    p = me
+    p = np.asmatrix(me)
     w = np.asmatrix(rand_weights(returns.shape[0]))
     #C = np.asmatrix(np.cov(returns))
-    C = sd
+    C = np.asmatrix(sd)
     
     mu = w * p.T
     sigma = np.sqrt(w * C * w.T)
@@ -150,7 +169,11 @@ print "----- stds -------"
 print stds[range(1, 5)]
 
 plt.plot(stds, means, 'o', markersize=5)
+print ly
+
+#plt.plot(lx, ly, 'y-o')
+print k.head()
 plt.xlabel('std')
 plt.ylabel('mean')
 plt.title('Mean and standard deviation of returns of randomly generated portfolios')
-plt.show()
+plt.show()"""
