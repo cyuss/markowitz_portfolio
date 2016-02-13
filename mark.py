@@ -88,7 +88,7 @@ def markwoitz_portfolio(rate_rets, cov_mat, exp_rets, target_ret = 0.0006, allow
     
     return weights, ret, risk
 
-def main(short = False) :
+def main(short = True) :
     # loading data
     df = load_data("prices.csv")
     #d = df.head(2)
@@ -99,7 +99,7 @@ def main(short = False) :
     covmat = cov_matrix(rateret)
     exprets = exp_returns(rateret)
 
-    k, x, y = markwoitz_portfolio(rateret, covmat, exprets, allow_short = False)
+    k, x, y = markwoitz_portfolio(rateret, covmat, exprets, allow_short = short)
     print k
     y = np.asarray(y)
     lx = []
@@ -111,7 +111,7 @@ def main(short = False) :
     space = np.arange(.0001, .0008, .000001)
 
     for r in space :
-        k, x, y = markwoitz_portfolio(rateret, covmat, exprets, target_ret = r, allow_short = False)
+        k, x, y = markwoitz_portfolio(rateret, covmat, exprets, target_ret = r, allow_short = short)
         lx.append(x)
         ly.append(y)
 
